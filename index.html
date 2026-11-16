@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#EDE1D1">
+<meta name="description" content="A private budgeting app. Your data stays on this phone.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Pocket budget</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#EDE1D1;--card:#F7F0E4;--ink:#3E1921;--mut:#7a5a5f;--pri:#7F2230;--onpri:#EDE1D1;--blue:#90ADBF;--gold:#BFB065;--warn:#D9401E;--line:#d9c9b4;color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#29100C;--card:#3E1921;--ink:#EDE1D1;--mut:#b99ea0;--pri:#D98A93;--onpri:#29100C;--line:#5A1D22;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#29100C;--card:#3E1921;--ink:#EDE1D1;--mut:#b99ea0;--pri:#D98A93;--onpri:#29100C;--line:#5A1D22;color-scheme:dark}
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit;margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.45 'DM Sans',system-ui,sans-serif;-webkit-tap-highlight-color:transparent}
+#app{max-width:480px;margin:auto;padding:16px 16px 96px}
+h1,h2,.serif{font-family:Fraunces,Georgia,serif;font-weight:600}
+h1{font-size:30px;line-height:1.1}h2{font-size:19px;margin:22px 0 10px}
+.mut{color:var(--mut);font-size:13px}.row{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.card{background:var(--card);border-radius:22px;padding:16px;margin-bottom:12px;border:1px solid var(--line)}
+.hero{background:var(--pri);color:var(--onpri);border:0}.hero .mut{color:var(--onpri);opacity:.8}
+.big{font-family:Fraunces,Georgia,serif;font-size:42px;font-weight:600;line-height:1.05}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.grid .card{margin:0}
+.bar{height:10px;border-radius:9px;background:var(--line);overflow:hidden;margin:6px 0 4px}.bar i{display:block;height:100%;border-radius:9px}
+button,input,select,textarea{font:inherit;color:inherit}
+button,.btn{border:0;border-radius:16px;padding:12px 16px;background:var(--card);border:1px solid var(--line);cursor:pointer;min-height:46px}
+.btn{display:block;text-align:center;margin-top:8px}
+.p{background:var(--pri);color:var(--onpri);border-color:var(--pri);font-weight:700}.p[disabled]{opacity:.35}
+button.del{color:var(--warn);border-color:var(--warn)}
+.chip{padding:9px 13px;border-radius:99px;min-height:0;margin:0 6px 8px 0;display:inline-block}.chip.on{background:var(--pri);color:var(--onpri);border-color:var(--pri)}
+input,select,textarea{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:11px 13px;width:100%}
+label.fld{display:block;margin:12px 0 4px;font-size:13px;color:var(--mut)}
+nav{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(5,1fr);padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px));max-width:480px;margin:auto}
+nav button{background:none;border:0;font-size:12px;min-height:50px;padding:4px;color:var(--mut)}nav button b{display:block;font-size:19px;font-weight:400}nav .on{color:var(--pri);font-weight:700}
+.sw{touch-action:pan-y;user-select:none;text-align:center;padding:26px 18px;position:relative}
+.sw .big{font-size:50px}.hint{position:absolute;top:14px;font-weight:700;opacity:0;font-size:14px}
+.sug{margin-top:16px;padding:12px;border-radius:16px;background:var(--bg)}.warn{color:var(--warn);font-weight:700}
+.sheet{position:fixed;inset:0;background:rgba(41,16,12,.55);display:flex;align-items:flex-end;justify-content:center;z-index:5}
+.sheet>div{background:var(--bg);width:100%;max-width:480px;border-radius:26px 26px 0 0;padding:20px 16px calc(20px + env(safe-area-inset-bottom,0px));max-height:88dvh;overflow:auto}
+.sheet h1{font-size:24px}
+.tx{padding:11px 0;border-bottom:1px solid var(--line)}.neg{color:var(--warn)}.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:90px;background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:99px;z-index:9}
+.empty{text-align:center;padding:22px 16px}.empty b{display:block;font-size:17px;margin-bottom:4px}
+</style></head><body><div id="app"></div><nav id="nav"></nav><div id="ov"></div><div id="toast"></div>
+<script>
+const K='pocketBudget1',$=s=>document.querySelector(s);
+const E=['Rent & housing','Groceries','Transport','Healthcare','Uni & study','Subscriptions & phone','Other essentials'];
+const D=['Eating out','Coffee shop','Personal care','Clothing','Fitness','Entertainment & hobbies','Gifts & donations','Trips & travel','Other spending'];
+const defCats=()=>[...E.map(n=>({n,t:'E'})),...D.map(n=>({n,t:'S'})),...['Job','Side hustle','Other income'].map(n=>({n,t:'I'}))];
+const defPots=()=>[['Gym',250],['Health backup',400],['Emergency fund',600],['Architecture / uni',400],['3 months of salary',1800],['Other',450],['Investments',0]].map(([n,g])=>({n,g,s:0,dl:''}));
+const def=()=>({tx:[],q:[],rules:{},cats:defCats(),pots:defPots(),adj:[],set:{pay:150,dow:5,save:20,ess:60,spend:20,shift:5},focus:{},mg:{}});
+const uid=()=>Math.random().toString(36).slice(2)+Date.now().toString(36).slice(-4);
+function migrate(o){o.tx=o.tx||[];o.q=o.q||[];o.rules=o.rules||{};o.adj=o.adj||[];o.focus=o.focus||{};o.mg=o.mg||{};
+ o.set=Object.assign({pay:150,dow:5,save:20,ess:60,spend:20,shift:5},o.set||{});o.cats=o.cats||defCats();
+ if(o.inc){o.inc.forEach(n=>{if(!o.cats.some(c=>c.t=='I'&&c.n==n))o.cats.push({n,t:'I'})});delete o.inc}
+ o.pots=o.pots||defPots();o.pots.forEach(p=>{p.dl=p.dl||'';p.g=+p.g||0;p.s=+p.s||0});o.tx.forEach(t=>{if(!t.id)t.id=uid()});return o}
+let S=null,tab='home',sh=null,hf={q:'',m:'this',k:'all',y:'all',c:'all'},skipFocus=false;
+
+/* ---------- storage: IndexedDB first, localStorage as fallback copy ---------- */
+const idb=()=>new Promise((res,rej)=>{const r=indexedDB.open('pocketBudget',1);r.onupgradeneeded=()=>r.result.createObjectStore('kv');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)});
+const idbGet=async()=>{const d=await idb();return new Promise((res,rej)=>{const q=d.transaction('kv').objectStore('kv').get('state');q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)})};
+const idbPut=async v=>{const d=await idb();return new Promise((res,rej)=>{const t=d.transaction('kv','readwrite');t.objectStore('kv').put(v,'state');t.oncomplete=()=>res();t.onerror=()=>rej(t.error);t.onabort=()=>rej(t.error)})};
+let wq=Promise.resolve(),warned=false;
+function sv(){wq=wq.then(()=>idbPut(JSON.parse(JSON.stringify(S)))).catch(()=>{if(!warned){warned=true;toast('Could not save in this browser. Download a backup.')}});
+ try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}}
+window.__flush=()=>wq;
+
+const eur=n=>new Intl.NumberFormat('nl-BE',{style:'currency',currency:'EUR'}).format(n||0);
+const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const today=()=>iso(new Date()),ym=()=>today().slice(0,7);
+const fd=s=>new Date(s+'T12:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+const key=d=>String(d).toUpperCase().replace(/[0-9]+/g,' ').replace(/[^A-Z ]/g,' ').split(/\s+/).filter(w=>w.length>2).slice(0,3).join(' ');
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const toast=m=>{$('#toast').innerHTML=`<div class=toast>${esc(m)}</div>`;setTimeout(()=>$('#toast').innerHTML='',2600)};
+const n2=v=>{const x=parseFloat(String(v).trim().replace(',','.'));return isNaN(x)?NaN:Math.round(x*100)/100};
+const ctype=c=>(S.cats.find(x=>x.n==c&&x.t!='I')||{t:'S'}).t;
+const sum=(a,f)=>a.reduce((s,t)=>s+f(t),0);
+const exists=(k,c)=>k=='expense'?S.cats.some(x=>x.t!='I'&&x.n==c):k=='income'?S.cats.some(x=>x.t=='I'&&x.n==c):k=='saving'?S.pots.some(p=>p.n==c):false;
+
+/* ---------- reading bank files (built in, nothing is uploaded anywhere) ---------- */
+const num=v=>{if(typeof v=='number')return v;let s=String(v??'').replace(/[€\s ]/g,'');if(!s)return NaN;const ng=/^\(.*\)$/.test(s)||/-$/.test(s);s=s.replace(/[()]/g,'').replace(/-$/,'');
+ if(s.includes(',')&&s.includes('.'))s=s.lastIndexOf(',')>s.lastIndexOf('.')?s.replace(/\./g,'').replace(',','.'):s.replace(/,/g,'');else if(s.includes(','))s=s.replace(',','.');
+ const n=parseFloat(s);return ng&&n>0?-n:n};
+const pdate=v=>{if(typeof v=='number'&&v>20000){return new Date((Math.floor(v)-25569)*864e5).toISOString().slice(0,10)}
+ const s=String(v||''),a=s.match(/(\d{4})-(\d{2})-(\d{2})/);if(a)return a[0];const b=s.match(/(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})/);
+ return b?`${b[3]}-${b[2].padStart(2,'0')}-${b[1].padStart(2,'0')}`:null};
+function parseCSV(t,d){const rows=[];let r=[],c='',q=false;for(let i=0;i<t.length;i++){const ch=t[i];
+ if(q){if(ch=='"'){if(t[i+1]=='"'){c+='"';i++}else q=false}else c+=ch}
+ else if(ch=='"')q=true;else if(ch==d){r.push(c);c=''}else if(ch=='\n'||ch=='\r'){if(ch=='\r'&&t[i+1]=='\n')i++;r.push(c);rows.push(r);r=[];c=''}else c+=ch}
+ if(c||r.length){r.push(c);rows.push(r)}return rows}
+async function inflate(u8){const ds=new DecompressionStream('deflate-raw'),w=ds.writable.getWriter();w.write(u8).catch(()=>{});w.close().catch(()=>{});return new Uint8Array(await new Response(ds.readable).arrayBuffer())}
+async function unzip(buf){const u=new Uint8Array(buf),dv=new DataView(buf);let e=-1;
+ for(let i=u.length-22;i>=Math.max(0,u.length-65557);i--)if(dv.getUint32(i,true)==0x06054b50){e=i;break}
+ if(e<0)throw new Error('zip');const n=dv.getUint16(e+10,true);let p=dv.getUint32(e+16,true);const f={};
+ for(let k=0;k<n&&dv.getUint32(p,true)==0x02014b50;k++){const nl=dv.getUint16(p+28,true),xl=dv.getUint16(p+30,true),cl=dv.getUint16(p+32,true);
+  f[new TextDecoder().decode(u.subarray(p+46,p+46+nl))]={m:dv.getUint16(p+10,true),cs:dv.getUint32(p+20,true),lo:dv.getUint32(p+42,true)};p+=46+nl+xl+cl}
+ return{names:Object.keys(f),async get(name){const x=f[name];if(!x)return null;const s=x.lo+30+dv.getUint16(x.lo+26,true)+dv.getUint16(x.lo+28,true),d=u.subarray(s,s+x.cs);
+  return new TextDecoder().decode(x.m==0?d:await inflate(d))}}}
+async function readXlsx(buf){const z=await unzip(buf),P=s=>new DOMParser().parseFromString(s,'application/xml'),T=(el,n)=>[...el.getElementsByTagName(n)];
+ const ss=[],sx=await z.get('xl/sharedStrings.xml');if(sx)T(P(sx),'si').forEach(si=>ss.push(T(si,'t').map(t=>t.textContent).join('')));
+ let path=null;try{const wbx=P(await z.get('xl/workbook.xml')),rel=P(await z.get('xl/_rels/workbook.xml.rels')),rid=T(wbx,'sheet')[0].getAttribute('r:id'),
+  tg=T(rel,'Relationship').find(r=>r.getAttribute('Id')==rid).getAttribute('Target');path=tg.startsWith('/')?tg.slice(1):'xl/'+tg}catch(e){}
+ if(!path||!z.names.includes(path))path=z.names.filter(n=>/^xl\/worksheets\/sheet\d+\.xml$/.test(n)).sort()[0];
+ const doc=P(await z.get(path)),rows=[],ci=r=>{let n=0;for(const ch of r.replace(/[0-9]/g,''))n=n*26+ch.charCodeAt(0)-64;return n-1};
+ T(doc,'row').forEach((row,ri)=>{const rn=(+row.getAttribute('r')||ri+1)-1,out=[];
+  T(row,'c').forEach(c=>{const i=ci(c.getAttribute('r')||''),t=c.getAttribute('t'),v=T(c,'v')[0],raw=v?v.textContent:'';let val;
+   if(t=='s')val=ss[+raw]??'';else if(t=='inlineStr')val=T(c,'t').map(x=>x.textContent).join('');else if(t=='str'||t=='e'||t=='d'||t=='b')val=raw;else val=raw===''?'':parseFloat(raw);
+   out[i]=val});for(let j=0;j<out.length;j++)if(out[j]===undefined)out[j]='';while(rows.length<rn)rows.push([]);rows[rn]=out});return rows}
+async function fileRows(f){const ab=await f.arrayBuffer(),h=new Uint8Array(ab.slice(0,4));
+ if(h[0]==0x50&&h[1]==0x4b)return readXlsx(ab);
+ if(h[0]==0xD0&&h[1]==0xCF)throw new Error('Old .xls files cannot be read. Save it as .xlsx or CSV and try again.');
+ let t;try{t=new TextDecoder('utf-8',{fatal:true}).decode(ab)}catch(e){t=new TextDecoder('windows-1252').decode(ab)}
+ t=t.replace(/^﻿/,'');const smp=t.slice(0,3000),d=[';',',','\t'].sort((a,b)=>smp.split(b).length-smp.split(a).length)[0];return parseCSV(t,d)}
+async function importFile(f){let rows;try{rows=await fileRows(f)}catch(e){return toast(/xls/.test(e.message)?e.message:'Could not read that file.')}
+ let h=rows.findIndex((r,i)=>i<20&&r.filter(c=>typeof c=='string'&&c.trim()).length>=3&&r.some(c=>/date|datum|amount|bedrag/i.test(c)));if(h<0)h=0;
+ const H=(rows[h]||[]).map(c=>String(c).toLowerCase()),ix=re=>H.map((c,i)=>re.test(c)?i:-1).filter(i=>i>=0);
+ const cd=ix(/date|datum|valuta|boek/)[0],cde=ix(/desc|omschr|naam|name|tegenpartij|counterparty|mededeling|payee|detail/).slice(0,2),
+ ca=ix(/amount|bedrag|montant/)[0],cdb=ix(/debit|\baf\b|withdraw/)[0],ccr=ix(/credit|\bbij\b|deposit/)[0],cs=ix(/af\/bij|d\/c|cr\/dr|^type/)[0];
+ if(cd==null||(ca==null&&cdb==null&&ccr==null))return toast('I could not find date and amount columns.');
+ const have=new Set([...S.tx,...S.q].map(t=>t.d+'|'+t.desc+'|'+t.amt));let add=0,skip=0;
+ rows.slice(h+1).forEach(r=>{const d=pdate(r[cd]);let a=ca!=null?num(r[ca]):(num(r[ccr])||0)-Math.abs(num(r[cdb])||0);
+  if(ca!=null&&cs!=null&&a>0&&/^(af|debit|db|dr|d)\b/i.test(String(r[cs]).trim()))a=-a;
+  const desc=cde.map(i=>String(r[i]||'').trim()).filter(Boolean).join(' – ');if(!d||!a||isNaN(a))return;a=Math.round(a*100)/100;
+  if(have.has(d+'|'+desc+'|'+a)){skip++;return}have.add(d+'|'+desc+'|'+a);S.q.push({id:uid(),d,desc,amt:a,key:key(desc)});add++});
+ S.q.sort((x,y)=>x.d<y.d?-1:1);sv();toast(add?`${add} new to review${skip?`, ${skip} already imported`:''}`:(skip?'Nothing new, all already imported':'No transactions found in that file'));tab='review';sh=null;render()}
+
+/* ---------- learning ---------- */
+function sugg(t){let r=S.rules[t.key],sure=true;
+ if(!r){const w=t.key.split(' ')[0],o=w&&Object.keys(S.rules).find(k=>k.split(' ')[0]==w);if(o){r=S.rules[o];sure=false}}
+ if(r&&r.kind!='transfer'&&!exists(r.kind,r.cat))r=null;if(r)return{...r,sure};
+ if(/spaar|saving|sparen/i.test(t.desc))return{kind:'saving',cat:null,sure:false};
+ return{kind:t.amt>0?'income':'expense',cat:null,sure:false}}
+function commit(t,kind,cat){S.q=S.q.filter(x=>x.id!=t.id);S.tx.push({...t,kind,cat});if(t.key)S.rules[t.key]={kind,cat};sv();sh=null;render()}
+
+/* ---------- numbers ---------- */
+function stats(){const n=new Date(),y=n.getFullYear(),m=n.getMonth(),dim=new Date(y,m+1,0).getDate(),td=n.getDate(),mt=S.tx.filter(t=>t.d.startsWith(ym())),
+ ex=mt.filter(t=>t.kind=='expense'),inc=sum(mt.filter(t=>t.kind=='income'),t=>t.amt),spent=sum(ex,t=>-t.amt),ess=sum(ex.filter(t=>ctype(t.cat)=='E'),t=>-t.amt),
+ saved=sum(mt.filter(t=>t.kind=='saving'),t=>-t.amt);let pd=0;for(let d=td+1;d<=dim;d++)if(new Date(y,m,d).getDay()==S.set.dow)pd++;
+ const fc=inc+pd*S.set.pay,sh_=({save:1,maint:0,spend:-1}[S.focus[ym()]]||0)*S.set.shift,autoT=fc*(S.set.save+sh_)/100,autoD=fc*(S.set.spend-sh_)/100,mg=S.mg[ym()]||{},
+ tgt=mg.save!=null?mg.save:autoT,db=mg.dis!=null?mg.dis:autoD,
+ left=fc-spent-Math.max(tgt,saved),dl=dim-td+1,st=sum(ex.filter(t=>t.d==today()),t=>-t.amt),day=(left+st)/dl,
+ e=Math.min(dim,td-((n.getDay()+6)%7)+6);
+ return{inc,spent,ess,dis:spent-ess,saved,fc,tgt,left,day,today:day-st,week:day*(e-td+1)-st,eb:fc*S.set.ess/100,db,dl,autoT,autoD}}
+const potBal=p=>p.s+sum(S.tx.filter(t=>t.kind=='saving'&&t.cat==p.n),t=>-t.amt)+sum(S.adj.filter(a=>a.p==p.n),a=>a.v);
+
+/* ---------- views ---------- */
+const bar=(a,b,c)=>`<div class=bar><i style="width:${Math.max(0,Math.min(100,b>0?a/b*100:0))}%;background:${c}"></i></div>`;
+const FN={save:'Save more',maint:'Maintenance',spend:'Spend more'};
+const pct=(a,b)=>b>0?new Intl.NumberFormat('en-GB',{maximumFractionDigits:1}).format(Math.max(0,a/b*100))+'%':'';
+const V={};
+V.home=()=>{const s=stats(),f=S.focus[ym()],mn=new Date().toLocaleDateString('en-GB',{month:'long'});
+ return `<div class=row><h1>${mn}</h1><button data-a=focus>${f?FN[f]:'Pick focus'} ✎</button></div>
+ <div class="card hero" style="margin-top:14px"><div class=mut>Left today</div><div class=big>${eur(s.today)}</div>
+ <div class="row mut" style="margin-top:10px"><span>This week ${eur(s.week)}</span><span>This month ${eur(s.left)}</span></div></div>
+ <div class=grid><div class=card><div class=mut>Income</div><b>${eur(s.inc)}</b><div class=mut>forecast ${eur(s.fc)}</div></div><div class=card><div class=mut>Spent</div><b>${eur(s.spent)}</b></div>
+ <div class=card><div class=mut>Saved</div><b>${eur(s.saved)}</b></div><div class=card><div class=mut>Remaining</div><b class="${s.left<0?'neg':''}">${eur(s.left)}</b><div class=mut>${eur(s.day)} a day</div></div></div>
+ <h2>Budget progress</h2><div class=card>
+ <div class=row><span>Essential spending</span><span class=mut>${eur(s.ess)} / ${eur(s.eb)}</span></div>${bar(s.ess,s.eb,s.ess>s.eb?'var(--warn)':'var(--blue)')}
+ <div class=row style="margin-top:12px"><span>Discretionary spending</span><span class=mut>${eur(s.dis)} / ${eur(s.db)}</span></div>${bar(s.dis,s.db,s.dis>s.db?'var(--warn)':'var(--pri)')}
+ <div class=row style="margin-top:12px"><span>Savings</span><span class=mut>${eur(s.saved)} / ${eur(s.tgt)}</span></div>${bar(s.saved,s.tgt,'var(--gold)')}</div>
+ <div class=row><h2>Monthly goals</h2><button data-a=mg style="min-height:36px;padding:6px 14px">Edit</button></div><div class=card>
+ <div class=row><span>Save ${eur(s.tgt)}</span><b>${s.saved>=s.tgt&&s.tgt>0?'✓ Goal reached':eur(Math.max(0,s.tgt-s.saved))+' to go'}</b></div>
+ <div class=row style="margin-top:8px"><span>Discretionary max ${eur(s.db)}</span><b class="${s.dis>s.db?'neg':''}">${s.dis>s.db?'Over by '+eur(s.dis-s.db):'✓ Within budget'}</b></div></div>
+ ${S.q.length?`<button class="p" style="width:100%" data-a=tab data-t=review>${S.q.length} to review</button>`:''}`};
+V.review=()=>{const t=S.q[0];const imp=`<label class="btn p" style="margin-top:10px">Import bank file<input type=file id=f accept=".csv,.xlsx,.txt,text/csv" hidden></label>`;
+ if(!t)return `<h1>Review</h1><div class=card style="margin-top:14px"><p>Nothing waiting. Download your bank spreadsheet (Excel or CSV) and import it here. Every transaction comes to you one at a time.</p>${imp}</div>`;
+ const g=sugg(t),ok=g.sure&&(g.cat||g.kind=='transfer'),kn={expense:'Expense',income:'Income',saving:'Savings',transfer:'Own transfer'};
+ return `<div class=row><h1>Review</h1><span class=mut>${S.q.length} left</span></div>
+ <div class="card sw" id=card style="margin-top:14px"><span class=hint style="left:16px;color:var(--pri)">Edit</span><span class=hint style="right:16px;color:var(--gold)">Correct</span>
+ <div class=big>${t.amt>0?'+':''}${eur(t.amt)}</div><div style="font-weight:700;margin-top:6px;word-break:break-word">${esc(t.desc||'No description')}</div><div class=mut>${fd(t.d)}</div>
+ <div class=sug>${ok?`<div class=mut>Suggested</div><b>${kn[g.kind]}${g.cat?' · '+esc(g.cat):''}${g.kind=='expense'?' · '+(ctype(g.cat)=='E'?'Essential':'Discretionary'):''}</b>`:
+ `<div class=warn>${g.cat?'Not sure – is it '+esc(g.cat)+'?':'Not sure yet – pick a category'}</div>`}</div></div>
+ <div class=row style="margin-top:14px"><button data-a=edit style="flex:1">✎ Edit</button><button class=p data-a=ok style="flex:1">${ok?'✓ Correct':'Pick category'}</button></div>
+ <p class=mut style="text-align:center;margin-top:12px">Swipe right to approve, left to edit</p>${imp}`};
+V.activity=()=>{const ms=[...new Set(S.tx.map(t=>t.d.slice(0,7)))].filter(m=>m!=ym()).sort().reverse(),names=[...new Set([...S.cats.map(c=>c.n),...S.pots.map(p=>p.n)])].sort();
+ const o=(v,l,cur)=>`<option value="${esc(v)}" ${cur==v?'selected':''}>${esc(l)}</option>`;
+ return `<h1>Transactions</h1><div style="margin:14px 0 10px"><input id=hq placeholder="Search merchant or note" value="${esc(hf.q)}"></div>
+ <div class=grid style="margin-bottom:12px"><select data-c=hm aria-label="Month">${o('this','This month',hf.m)}${o('all','All time',hf.m)}${ms.map(m=>o(m,new Date(m+'-01T12:00').toLocaleDateString('en-GB',{month:'long',year:'numeric'}),hf.m)).join('')}</select>
+ <select data-c=hk aria-label="Type">${[['all','All types'],['expense','Expenses'],['income','Income'],['saving','Savings'],['transfer','Own transfers']].map(([v,l])=>o(v,l,hf.k)).join('')}</select>
+ <select data-c=hc aria-label="Category">${o('all','All categories',hf.c)}${names.map(n=>o(n,n,hf.c)).join('')}</select>
+ <select data-c=hy aria-label="Essential or discretionary">${[['all','Essential and discretionary'],['E','Essential only'],['S','Discretionary only']].map(([v,l])=>o(v,l,hf.y)).join('')}</select></div><div id=list>${list()}</div>`};
+const list=()=>{const q=hf.q.toLowerCase(),a=S.tx.filter(t=>(hf.m=='all'||t.d.startsWith(hf.m=='this'?ym():hf.m))&&(hf.k=='all'||t.kind==hf.k)&&(hf.c=='all'||t.cat==hf.c)&&(hf.y=='all'||(t.kind=='expense'&&ctype(t.cat)==hf.y))&&(!q||(t.desc+' '+(t.cat||'')).toLowerCase().includes(q))).sort((x,y)=>x.d<y.d?1:-1);
+ return a.length?a.slice(0,300).map(t=>`<div class="tx row" data-a=hist data-i=${t.id} style="cursor:pointer"><div><div style="font-weight:500">${esc(t.desc||'—')}</div><div class=mut>${fd(t.d)} · ${t.kind=='transfer'?'Own transfer':esc(t.cat||'Uncategorised')}</div></div><b class="${t.amt<0?'neg':''}">${eur(t.amt)}</b></div>`).join(''):`<div class="card empty"><b>${S.tx.length?'Nothing matches':'No transactions yet'}</b><span class=mut>${S.tx.length?'Try a different search or filter.':'Import a bank file on the Review tab. Approved transactions appear here.'}</span></div>`};
+const dueTxt=(p,b)=>{if(!p.dl)return '';const rem=Math.max(0,p.g-b);if(p.g>0&&rem==0)return 'Goal reached ✓';const w=(new Date(p.dl+'T12:00')-new Date())/6048e5;
+ return w<=0?`Deadline ${fd(p.dl)} has passed`:`By ${fd(p.dl)}${p.g>0?' · '+eur(rem/Math.max(1,Math.ceil(w)))+' a week':''}`};
+V.savings=()=>{const known=t=>S.pots.some(p=>p.n==t.cat),st=sum(S.pots,p=>p.s),co=sum(S.tx.filter(t=>t.kind=='saving'&&known(t)),t=>-t.amt),ch=sum(S.adj.filter(a=>S.pots.some(p=>p.n==a.p)),a=>a.v),tot=st+co+ch;
+ return `<h1>Savings</h1><div class="card hero" style="margin-top:14px"><div class=mut>Total savings and investments</div><div class=big>${eur(tot)}</div>
+ <div class=mut style="margin-top:10px">${eur(st)} starting + ${eur(co)} contributions ${ch<0?'−':'+'} ${eur(Math.abs(ch))} manual changes</div></div>
+ ${S.pots.length?S.pots.map((p,i)=>{const b=potBal(p);return `<div class=card><div class=row><b>${esc(p.n)}</b><span><button data-a=goaledit data-i=${i} style="min-height:36px;padding:6px 12px">Edit</button> <button data-a=adj data-i=${i} style="min-height:36px;padding:6px 12px">Update</button></span></div>
+ <div class=row><span class=big style="font-size:26px">${eur(b)}</span><span class=mut>${p.g?'of '+eur(p.g)+' · '+pct(b,p.g):''}</span></div>${p.g?bar(b,p.g,'var(--gold)'):''}${p.dl?`<div class=mut>${dueTxt(p,b)}</div>`:''}</div>`}).join('')
+ :`<div class="card empty"><b>No savings goals yet</b><span class=mut>Add a goal like a new laptop or an emergency fund.</span></div>`}
+ <button class=p style="width:100%" data-a=goaladd>+ Add savings goal</button>
+ <p class=mut style="margin-top:12px">Savings transactions you approve are added to the matching goal automatically. Use Update to enter investment value changes or money you take out. Own transfers are never counted as spending.</p>`};
+const inp=(l,f,v)=>`<div class=row style="margin:8px 0"><span>${l}</span><input type=number inputmode=decimal min=0 data-c="${f}" value="${v}" style="width:100px;text-align:right"></div>`;
+V.settings=()=>{const c=S.set,tot=c.save+c.ess+c.spend;
+ const grp=(t,l)=>{const a=S.cats.map((x,i)=>[x,i]).filter(([x])=>x.t==t);return `<div class=mut style="margin:10px 0 6px">${l}</div>`+(a.length?a.map(([x,i])=>`<div class=row style="margin-bottom:6px"><span>${esc(x.n)}</span><span><button class=chip data-a=catedit data-i=${i}>Edit</button><button class=chip data-a=catdel data-i=${i} aria-label="Delete ${esc(x.n)}">✕</button></span></div>`).join(''):`<div class=mut style="margin-bottom:8px">None yet</div>`)};
+ return `<h1>Settings</h1><h2>Budget rules</h2><div class=card>${inp('Weekly income (average)','pay',c.pay)}
+ <div class=row style="margin:8px 0"><span>Pay day</span><select data-c=dow style="width:130px">${['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'].map((d,i)=>`<option value=${i} ${c.dow==i?'selected':''}>${d}</option>`).join('')}</select></div>
+ ${inp('Saving %','save',c.save)}${inp('Essentials %','ess',c.ess)}${inp('Spending %','spend',c.spend)}${inp('Focus shift (points)','shift',c.shift)}
+ <p class=mut id=rsum>${tot==100?'Saving, essentials and spending add up to 100%.':'<span class=warn>They add up to '+tot+'%, not 100%.</span>'} A focus of Save more moves the shift from spending to saving; Spend more does the opposite.</p></div>
+ <h2>Categories</h2><div class=card>${S.cats.length?grp('E','Essential')+grp('S','Discretionary')+grp('I','Income'):`<div class=empty><b>No categories yet</b><span class=mut>You need categories to sort transactions.</span></div>`}
+ <button class=p style="width:100%;margin-top:6px" data-a=catadd>+ Add category</button><button style="width:100%;margin-top:8px" data-a=cdef>Restore default categories</button></div>
+ <h2>Savings goals</h2><div class=card>${S.pots.length?S.pots.map((p,i)=>`<div class=row style="margin-bottom:6px"><span>${esc(p.n)}<span class=mut> ${eur(potBal(p))}${p.g?' / '+eur(p.g):''}</span></span><span><button class=chip data-a=goaledit data-i=${i}>Edit</button><button class=chip data-a=goaldel data-i=${i} aria-label="Delete ${esc(p.n)}">✕</button></span></div>`).join(''):`<div class=empty><b>No savings goals yet</b></div>`}
+ <button class=p style="width:100%;margin-top:6px" data-a=goaladd>+ Add savings goal</button></div>
+ <h2>Your data</h2><div class=card><p>Everything stays on this phone, in the app's own storage. There is no account, no server and no bank connection. Your bank file is read on the phone and never uploaded. The only outside request is the font, loaded once and then kept for offline use. Clearing this app's data erases your budget, so download a backup now and then.</p>
+ <label class="btn p">Import bank file<input type=file id=f accept=".csv,.xlsx,.txt,text/csv" hidden></label>
+ <button data-a=bk style="width:100%;margin-top:8px">Download backup file</button>
+ <label class=btn>Restore from backup file<input type=file id=rf accept=".json,application/json" hidden></label></div>`};
+
+/* ---------- sheets (pop-ups) ---------- */
+function sheet(){if(!sh)return '';const W=x=>`<div class=sheet data-a=close><div>${x}</div></div>`,er=sh.err?`<p class=warn style="margin-top:10px">${esc(sh.err)}</p>`:'';
+ const fld=(l,f,v,ph,extra='')=>`<label class=fld for=fld-${f}>${l}</label><input id=fld-${f} data-f=${f} value="${esc(v??'')}" placeholder="${esc(ph||'')}" ${extra}>`;
+ if(sh.t=='focus')return W(`<h1>Your focus this month</h1><p class=mut style="margin:6px 0 14px">It nudges your goals. Your budget rules stay the same.</p>
+ ${[['save','Save more','Prioritise growing savings.'],['maint','Maintenance','Stay within the normal plan.'],['spend','Spend more','Allow a bit more fun within your limits.']].map(([k,n,d])=>`<button class=card style="width:100%;text-align:left;display:block" data-a=setf data-k=${k}><b>${n}</b><div class=mut>${d}</div></button>`).join('')}<button style="width:100%" data-a=close>Not now</button>`);
+ if(sh.t=='adj'){const p=S.pots[sh.i];return W(`<h1>${esc(p.n)}</h1><p class=mut style="margin:6px 0 4px">Enter the change. Use a minus for money taken out or a lower investment value.</p>
+ ${fld('Change (€)','v',sh.v,'e.g. 25 or -40','inputmode=decimal')}${er}<button class=p style="width:100%;margin-top:14px" data-a=adjok>Save change</button><button style="width:100%;margin-top:8px" data-a=close>Cancel</button>`)}
+ if(sh.t=='mg')return W(`<h1>Goals for this month</h1><p class=mut style="margin:6px 0 4px">Leave a box empty to use your budget rules.</p>
+ ${fld('Save goal (€)','save',sh.save,'Automatic: '+eur(sh.autoT),'inputmode=decimal')}${fld('Discretionary maximum (€)','dis',sh.dis,'Automatic: '+eur(sh.autoD),'inputmode=decimal')}${er}
+ <button class=p style="width:100%;margin-top:14px" data-a=mgsave>Save goals</button><button style="width:100%;margin-top:8px" data-a=close>Cancel</button>`);
+ if(sh.t=='ask')return W(`<h1>${esc(sh.title)}</h1><p style="margin:8px 0 12px">${esc(sh.msg||'')}</p>${sh.opts?`<select id=mv aria-label="Move to"><option value="">${esc(sh.none)}</option>${sh.opts.map(o=>`<option value="${esc(o)}">Move to ${esc(o)}</option>`).join('')}</select>`:''}
+ <button class="p ${sh.danger===false?'':'del'}" style="width:100%;margin-top:14px" data-a=askok>${esc(sh.ok)}</button><button style="width:100%;margin-top:8px" data-a=close>Cancel</button>`);
+ if(sh.t=='goal'){const nw=sh.i==null;return W(`<h1>${nw?'New savings goal':'Edit savings goal'}</h1>${fld('Name','n',sh.n,'e.g. New laptop')}${fld('Target amount (€)','g',sh.g,'e.g. 1200','inputmode=decimal')}
+ ${fld('Current amount (€)','cur',sh.cur,'e.g. 300','inputmode=decimal')}<label class=fld for=fld-dl>Deadline (optional)</label><input id=fld-dl type=date data-f=dl value="${esc(sh.dl||'')}">${er}
+ <button class=p style="width:100%;margin-top:14px" data-a=goalsave>Save goal</button><button style="width:100%;margin-top:8px" data-a=close>Cancel</button>${nw?'':`<button class=del style="width:100%;margin-top:8px" data-a=goaldel data-i=${sh.i}>Delete goal</button>`}`)}
+ if(sh.t=='cat'){const nw=sh.i==null,ex=nw?null:S.cats[sh.i],opts=nw?[['E','Essential'],['S','Discretionary'],['I','Income'],['V','Savings goal']]:ex.t=='I'?[['I','Income']]:[['E','Essential'],['S','Discretionary']];
+ return W(`<h1>${nw?'New category':'Edit category'}</h1>${fld('Name','n',sh.n,'e.g. Books')}<label class=fld>Belongs to</label><div>${opts.map(([k,l])=>`<button class="chip ${sh.ty==k?'on':''}" data-a=catty data-k=${k}>${l}</button>`).join('')}</div>${sh.ty=='V'?'<p class=mut>A savings goal is also managed on the Savings tab.</p>':''}${er}
+ <button class=p style="width:100%;margin-top:10px" data-a=catsave>Save category</button><button style="width:100%;margin-top:8px" data-a=close>Cancel</button>${nw?'':`<button class=del style="width:100%;margin-top:8px" data-a=catdel data-i=${sh.i}>Delete category</button>`}`)}
+ const t=sh.tx,k=sh.kind,kn={expense:'Expense',income:'Income',saving:'Savings',transfer:'Own transfer'},ch=n=>`<button class="chip ${sh.cat==n?'on':''}" data-a=pick data-n="${esc(n)}">${esc(n)}</button>`,
+ nw=ty=>`<button class=chip data-a=newcat data-ty=${ty}>+ New</button>`,none=m=>`<div class=mut style="margin-bottom:8px">${m}</div>`,of=ty=>S.cats.filter(c=>c.t==ty).map(c=>ch(c.n)).join('');
+ const body=k=='expense'?`<div class=mut>Essential</div>${of('E')||none('No essential categories yet')}${nw('E')}<div class=mut>Discretionary</div>${of('S')||none('No discretionary categories yet')}${nw('S')}`:
+ k=='income'?`<div class=mut>What is this income?</div>${of('I')||none('No income categories yet')}${nw('I')}`:
+ k=='saving'?`<div class=mut>Which goal?</div>${S.pots.map(p=>ch(p.n)).join('')||none('No savings goals yet')}<button class=chip data-a=goaladd>+ New goal</button>`:'<p class=mut>This will not count as spending or income.</p>';
+ return W(`<div class=row><b class=serif style="font-size:24px">${eur(t.amt)}</b><span class=mut>${esc((t.desc||'').slice(0,28))}</span></div>
+ <div style="margin:12px 0">${Object.keys(kn).map(x=>`<button class="chip ${k==x?'on':''}" data-a=kind data-k=${x}>${kn[x]}</button>`).join('')}</div>${body}
+ <button class=p style="width:100%;margin-top:8px" data-a=saveEd ${(sh.cat||k=='transfer')?'':'disabled'}>${sh.hist?'Save change':'Save and next'}</button>
+ <div class=row style="margin-top:8px"><button style="flex:1" data-a=close>Cancel</button>${sh.hist?`<button class=del style="flex:1" data-a=txdel>Delete</button>`:''}</div>`)}
+
+/* ---------- render ---------- */
+function render(){if(!S)return;if(tab=='home'&&!S.focus[ym()]&&!sh&&!skipFocus)sh={t:'focus'};
+ const sy=scrollY;$('#app').innerHTML=V[tab]();$('#ov').innerHTML=sheet();
+ $('#nav').innerHTML=[['home','⌂','Home'],['review','✓','Review'],['activity','☰','History'],['savings','◐','Savings'],['settings','⚙','Settings']].map(([k,i,l])=>`<button class="${tab==k?'on':''}" data-a=tab data-t=${k}><b>${i}</b>${l}${k=='review'&&S.q.length?' ('+S.q.length+')':''}</button>`).join('');
+ const q=$('#hq');if(q)q.oninput=()=>{hf.q=q.value;$('#list').innerHTML=list()};
+ const c=$('#card');if(c){let x0=null,dx=0;const H=c.querySelectorAll('.hint'),rs=()=>{x0=null;dx=0;c.style.transform='';H.forEach(h=>h.style.opacity=0)};
+  c.onpointerdown=e=>{x0=e.clientX;dx=0;c.setPointerCapture(e.pointerId)};
+  c.onpointermove=e=>{if(x0==null)return;dx=e.clientX-x0;c.style.transform=`translateX(${dx}px) rotate(${dx/25}deg)`;H[0].style.opacity=dx<0?Math.min(1,-dx/90):0;H[1].style.opacity=dx>0?Math.min(1,dx/90):0};
+  c.onpointerup=()=>{if(x0==null)return;const d=dx;rs();if(Math.abs(d)>90)d>0?act.ok():act.edit()};c.onpointercancel=rs}
+ if(sy)scrollTo(0,sy)}
+
+/* ---------- actions ---------- */
+const err=m=>{sh.err=m;render()};
+function renameCat(o,n,fam){const k=fam=='I'?'income':'expense';S.tx.forEach(x=>{if(x.kind==k&&x.cat==o)x.cat=n});Object.values(S.rules).forEach(r=>{if(r.kind==k&&r.cat==o)r.cat=n})}
+function renamePot(o,n){S.tx.forEach(x=>{if(x.kind=='saving'&&x.cat==o)x.cat=n});Object.values(S.rules).forEach(r=>{if(r.kind=='saving'&&r.cat==o)r.cat=n});S.adj.forEach(a=>{if(a.p==o)a.p=n})}
+function dropRules(k,c){Object.keys(S.rules).forEach(x=>{const r=S.rules[x];if(r.kind==k&&r.cat==c)delete S.rules[x]})}
+const done=(msg)=>{sv();const r=sh&&sh.ret;sh=r||null;render();if(msg)toast(msg)};
+const act={tab:d=>{tab=d.t;sh=null;render();scrollTo(0,0)},
+ close:()=>{const r=sh&&sh.ret;sh=r||null;skipFocus=true;render()},
+ focus:()=>{sh={t:'focus'};render()},setf:d=>{S.focus[ym()]=d.k;sv();sh=null;render()},
+ ok:()=>{const t=S.q[0],g=sugg(t);if(g.sure&&(g.cat||g.kind=='transfer'))commit(t,g.kind,g.cat);else act.edit()},
+ edit:()=>{const t=S.q[0],g=sugg(t);sh={t:'edit',tx:t,kind:g.kind,cat:g.cat};render()},
+ hist:d=>{const t=S.tx.find(x=>x.id==d.i);if(!t)return;sh={t:'edit',tx:t,kind:t.kind,cat:t.cat,hist:1};render()},
+ kind:d=>{sh.kind=d.k;sh.cat=null;render()},pick:d=>{sh.cat=d.n;render()},
+ saveEd:()=>{const k=sh.kind,c=k=='transfer'?null:sh.cat;if(sh.hist){const t=S.tx.find(x=>x.id==sh.tx.id);t.kind=k;t.cat=c;if(t.key)S.rules[t.key]={kind:k,cat:c};sv();sh=null;render();toast('Saved')}else commit(sh.tx,k,c)},
+ txdel:()=>{const t=sh.tx;sh={t:'ask',title:'Delete this transaction?',msg:`${eur(t.amt)} · ${t.desc||''}`,ok:'Delete transaction',fn:()=>{S.tx=S.tx.filter(x=>x.id!=t.id);done('Deleted')}};render()},
+ /* savings goals */
+ goaladd:()=>{sh={t:'goal',i:null,n:'',g:'',cur:'',dl:'',ret:sh&&sh.t=='edit'?sh:null};render()},
+ goaledit:d=>{const p=S.pots[+d.i];sh={t:'goal',i:+d.i,n:p.n,g:p.g?String(p.g):'',cur:String(Math.round(potBal(p)*100)/100),dl:p.dl||''};render()},
+ goalsave:()=>{const n=(sh.n||'').trim(),g=sh.g===''?0:n2(sh.g),c=sh.cur===''?0:n2(sh.cur);
+  if(!n)return err('Give the goal a name.');if(isNaN(g)||g<0)return err('The target must be a number.');if(isNaN(c))return err('The current amount must be a number.');
+  if(S.pots.some((p,j)=>j!==sh.i&&p.n.toLowerCase()==n.toLowerCase()))return err('You already have a goal with that name.');
+  if(sh.i==null){S.pots.push({n,g,s:c,dl:sh.dl||''});if(sh.ret){sh.ret.kind='saving';sh.ret.cat=n}}
+  else{const p=S.pots[sh.i],b=potBal(p);p.s=Math.round((p.s+c-b)*100)/100;if(p.n!=n){renamePot(p.n,n);p.n=n}p.g=g;p.dl=sh.dl||''}
+  done('Goal saved')},
+ goaldel:d=>{const p=S.pots[+d.i],b=potBal(p),cnt=S.tx.filter(t=>t.kind=='saving'&&t.cat==p.n).length,opts=S.pots.filter(x=>x!==p).map(x=>x.n);
+  sh={t:'ask',title:`Delete “${p.n}”?`,msg:`This goal and its balance (${eur(b)}) leave your total.${cnt?` ${cnt} savings transaction${cnt>1?'s are':' is'} linked to it. Where should ${cnt>1?'they':'it'} go?`:''}`,opts:cnt?opts:null,none:'Leave without a goal',ok:'Delete goal',
+  fn:mv=>{S.tx.forEach(t=>{if(t.kind=='saving'&&t.cat==p.n)t.cat=mv||''});if(mv)S.adj.forEach(a=>{if(a.p==p.n)a.p=mv});else S.adj=S.adj.filter(a=>a.p!=p.n);dropRules('saving',p.n);S.pots.splice(S.pots.indexOf(p),1);sh=null;done('Goal deleted')}};render()},
+ adj:d=>{sh={t:'adj',i:+d.i,v:''};render()},
+ adjok:()=>{const v=n2(sh.v);if(!v)return err('Enter an amount, for example 25 or -40.');S.adj.push({p:S.pots[sh.i].n,v,d:today()});done('Updated')},
+ /* categories */
+ catadd:()=>{sh={t:'cat',i:null,n:'',ty:'S'};render()},
+ newcat:d=>{sh={t:'cat',i:null,n:'',ty:d.ty,ret:sh};render()},
+ catedit:d=>{const c=S.cats[+d.i];sh={t:'cat',i:+d.i,n:c.n,ty:c.t};render()},
+ catty:d=>{sh.ty=d.k;render()},
+ catsave:()=>{const n=(sh.n||'').trim(),ty=sh.ty;if(!n)return err('Give the category a name.');
+  if(ty=='V'){if(S.pots.some(p=>p.n.toLowerCase()==n.toLowerCase()))return err('You already have a goal with that name.');S.pots.push({n,g:0,s:0,dl:''});if(sh.ret){sh.ret.kind='saving';sh.ret.cat=n}return done('Savings goal added')}
+  const fam=ty=='I'?'I':'X';if(S.cats.some((c,j)=>j!==sh.i&&(c.t=='I')==(fam=='I')&&c.n.toLowerCase()==n.toLowerCase()))return err('You already have a category with that name.');
+  if(sh.i==null){S.cats.push({n,t:ty});if(sh.ret){sh.ret.kind=fam=='I'?'income':'expense';sh.ret.cat=n}}else{const c=S.cats[sh.i];if(c.n!=n){renameCat(c.n,n,fam);c.n=n}c.t=ty}
+  done('Category saved')},
+ catdel:d=>{const c=S.cats[+d.i],k=c.t=='I'?'income':'expense',cnt=S.tx.filter(t=>t.kind==k&&t.cat==c.n).length,opts=S.cats.filter(x=>x!==c&&(x.t=='I')==(c.t=='I')).map(x=>x.n);
+  sh={t:'ask',title:`Delete “${c.n}”?`,msg:cnt?`${cnt} transaction${cnt>1?'s use':' uses'} this category. Where should ${cnt>1?'they':'it'} go?`:'This category will be removed. Your transactions are not affected.',opts:cnt?opts:null,none:'Leave uncategorised',ok:'Delete category',
+  fn:mv=>{S.tx.forEach(t=>{if(t.kind==k&&t.cat==c.n)t.cat=mv||''});dropRules(k,c.n);S.cats.splice(S.cats.indexOf(c),1);sh=null;done('Category deleted')}};render()},
+ cdef:()=>{let n=0;defCats().forEach(c=>{if(!S.cats.some(x=>x.n==c.n&&(x.t=='I')==(c.t=='I'))){S.cats.push(c);n++}});sv();render();toast(n?`${n} default categor${n>1?'ies':'y'} restored`:'All default categories are already there')},
+ /* monthly goals */
+ mg:()=>{const s=stats(),m=S.mg[ym()]||{};sh={t:'mg',save:m.save!=null?String(m.save):'',dis:m.dis!=null?String(m.dis):'',autoT:s.autoT,autoD:s.autoD};render()},
+ mgsave:()=>{const a=sh.save===''?null:n2(sh.save),b=sh.dis===''?null:n2(sh.dis);if((a!==null&&(isNaN(a)||a<0))||(b!==null&&(isNaN(b)||b<0)))return err('Enter amounts as numbers, or leave a box empty.');S.mg[ym()]={save:a,dis:b};done('Goals saved')},
+ askok:()=>{const mv=$('#mv'),f=sh.fn;f(mv?mv.value:'')},
+ bk:()=>{const b=new Blob([JSON.stringify(S,null,1)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`pocket-budget-backup-${today()}.json`;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500);toast('Backup downloaded')}};
+async function restoreFile(f){let o;try{o=JSON.parse(await f.text());if(!Array.isArray(o.tx)||!Array.isArray(o.cats))throw 0}catch(e){return toast('That is not a Pocket budget backup.')}
+ sh={t:'ask',title:'Restore this backup?',msg:`This replaces everything in the app with the backup (${o.tx.length} transactions).`,ok:'Restore',fn:()=>{S=migrate(o);sh=null;sv();render();toast('Backup restored')}};render()}
+document.addEventListener('click',e=>{const a=e.target.closest('[data-a]');if(!a||!act[a.dataset.a])return;if(a.dataset.a=='close'&&a.classList.contains('sheet')&&e.target!==a)return;act[a.dataset.a](a.dataset)});
+document.addEventListener('input',e=>{const t=e.target;if(t.dataset.f&&sh){sh[t.dataset.f]=t.value;if(sh.err){sh.err='';const p=document.querySelector('.sheet p.warn');if(p)p.remove()}}
+ const c=t.dataset.c;if(c&&['save','ess','spend'].includes(c)){const s=S.set,v=Math.max(0,+t.value||0),o={...s,[c]:v},tot=o.save+o.ess+o.spend,r=$('#rsum');if(r)r.firstChild&&(r.innerHTML=(tot==100?'Saving, essentials and spending add up to 100%.':'<span class=warn>They add up to '+tot+'%, not 100%.</span>')+' A focus of Save more moves the shift from spending to saving; Spend more does the opposite.')}});
+document.addEventListener('change',e=>{const t=e.target;if(t.type=='file'){const f=t.files[0];t.value='';if(!f)return;return t.id=='rf'?restoreFile(f):importFile(f)}
+ const c=t.dataset.c;if(!c)return;const v=t.value;if(c=='hm')hf.m=v;else if(c=='hk')hf.k=v;else if(c=='hy')hf.y=v;else if(c=='hc')hf.c=v;else S.set[c]=Math.max(0,+v||0);
+ if(c[0]=='h')$('#list').innerHTML=list();else sv()});
+(async()=>{let o=null;try{o=await idbGet()}catch(e){}
+ if(!o){try{o=JSON.parse(localStorage.getItem(K))}catch(e){}}
+ S=migrate(o||def());render();try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
+ if('serviceWorker' in navigator&&/^https?:/.test(location.protocol))navigator.serviceWorker.register('sw.js').catch(()=>{})})();
+</script></body></html>
